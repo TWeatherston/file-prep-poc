@@ -1,0 +1,53 @@
+services:
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "15672:15672"
+      - "5672:5672"
+    hostname: rabbitmq
+    # Wait for rabbitmq to be ready before starting the web service
+    healthcheck:
+      test: rabbitmq-diagnostics check_port_connectivity
+      interval: 10s
+      timeout: 30s
+      retries: 10
+  memcached:
+    image: memcached:latest
+    ports:
+      - "11211:11211"
+  web:
+    build: .
+    command: poetry run python -m src.main
+    ports:
+      - "8000:8000"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - POETRY_HTTP_BASIC_ATHEON_USERNAME=${POETRY_HTTP_BASIC_ATHEON_USERNAME}
+      - POETRY_HTTP_BASIC_ATHEON_PASSWORD=${POETRY_HTTP_BASIC_ATHEON_PASSWORD}
+      - OUTPUT_DIR=${OUTPUT_DIR}
+      - AUTH0__CLIENT_ID=${AUTH0__CLIENT_ID}
+      - AUTH0__CLIENT_SECRET=${AUTH0__CLIENT_SECRET}
+      - AUTH0__AUDIENCE=${AUTH0__AUDIENCE}
+      - AUTH0__AUTHORIZATION_BASE_URL=${AUTH0__AUTHORIZATION_BASE_URL}
+      - AUTH0__ROOT_URL=${AUTH0__ROOT_URL}
+  celery:
+    build: .
+    command: poetry run celery -A src worker -l info
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - POETRY_HTTP_BASIC_ATHEON_USERNAME=${POETRY_HTTP_BASIC_ATHEON_USERNAME}
+      - POETRY_HTTP_BASIC_ATHEON_PASSWORD=${POETRY_HTTP_BASIC_ATHEON_PASSWORD}
+      - OUTPUT_DIR=${OUTPUT_DIR}
+      - AUTH0__CLIENT_ID=${AUTH0__CLIENT_ID}
+      - AUTH0__CLIENT_SECRET=${AUTH0__CLIENT_SECRET}
+      - AUTH0__AUDIENCE=${AUTH0__AUDIENCE}
+      - AUTH0__AUTHORIZATION_BASE_URL=${AUTH0__AUTHORIZATION_BASE_URL}
+      - AUTH0__ROOT_URL=${AUTH0__ROOT_URL}
